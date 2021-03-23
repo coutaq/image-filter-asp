@@ -8,6 +8,7 @@ namespace ImageFilterASP
 {
     public class PostRequest
     {
+        private long contentLength;
         private string contentInfo;
         private Image img;
         private string weirdTextAtTheEnd;
@@ -16,6 +17,7 @@ namespace ImageFilterASP
         public string ContentInfo { get => contentInfo; set => contentInfo = value; }
         public Image Img { get => img; set => img = value; }
         public string WeirdTextAtTheEnd { get => weirdTextAtTheEnd; set => weirdTextAtTheEnd = value; }
+        public long ContentLength { get => contentLength; set => contentLength = value; }
 
         public PostRequest(ILogger _logger)
         {
@@ -31,9 +33,10 @@ namespace ImageFilterASP
         }
         public void display()
         {
-            _logger.LogInformation($"content info: {this.ContentInfo}");
+            _logger.LogInformation($"content length: {this.contentLength}");
+            _logger.LogInformation($"content info: {this.contentInfo}");
             //_logger.LogInformation($"image: {this.Img.getData()}");
-            _logger.LogInformation($"weirdTextAtTheEnd: {this.WeirdTextAtTheEnd}");
+            _logger.LogInformation($"weirdTextAtTheEnd: {this.weirdTextAtTheEnd}");
         }
         
     }

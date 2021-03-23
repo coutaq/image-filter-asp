@@ -33,7 +33,18 @@ namespace ImageFilterASP.Controllers
         private async void ParseRequestAsync(HttpContext httpContext)
         {
             _logger.LogDebug("Logging info from current request");
-            PostRequest request = await ReadPipeAsync(httpContext.Request.BodyReader);
+            var result = await ReadPipeAsync(httpContext.Request.BodyReader);
+            PostRequest request = result.Item1;
+            if (httpContext.Request.ContentLength.HasValue)
+            {
+                request.ContentLength = httpContext.Request.ContentLength.Value;
+                _logger.LogInformation($"post: {request.ContentLength}; method: {result.Item2} difference: {request.ContentLength- result.Item2} ");
+            }
+            else
+            {
+                //something probably went wrong
+            }
+           
             request.display();
             /*for(int i = 0; i < headers.Length; i++)
             {
@@ -52,20 +63,23 @@ namespace ImageFilterASP.Controllers
         {
             return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
         }
+        long contentLength = 0;
         const uint CONTENTINFO = 0;
         const uint IMAGE = 1;
         const uint ENDTEXT = 2;
-        async Task<PostRequest> ReadPipeAsync(PipeReader reader)
+        async Task<Tuple<PostRequest, long>> ReadPipeAsync(PipeReader reader)
         {
             PostRequest pr = new PostRequest(_logger);
             string image = "";
             uint index = 0;
+            long contentLength = 0;
             while (true)
             {
                 ReadResult result = await reader.ReadAsync();
 
 
                 ReadOnlySequence<byte> buffer = result.Buffer;
+                
                 SequencePosition? position = null;
 
 
@@ -77,16 +91,19 @@ namespace ImageFilterASP.Controllers
 
                     if (position != null)
                     {
-                        string currLine = ProcessLine(buffer.Slice(0, position.Value), index == IMAGE);
+                        var data = ProcessLine(buffer.Slice(0, position.Value), index == IMAGE);
+                        string currLine = data.Item1;
+                        contentLength += buffer.Slice(0, position.Value).Length;
                         Console.WriteLine();
                         if (currLine == null || currLine == "\r")
                         {
+                            
                             index++;
                         }
                         else
                         {
-                            if (!currLine.StartsWith("------WebKitFormBoundary"))
-                            {
+                            //if (!currLine.StartsWith("------WebKitFormBoundary"))
+                            //{
                                 switch (index)
                                 {
                                     case CONTENTINFO:
@@ -100,7 +117,7 @@ namespace ImageFilterASP.Controllers
                                         pr.WeirdTextAtTheEnd += currLine;
                                         break;
                                 }
-                            }
+                            //}
                         }
                         
                         // Process the line
@@ -126,16 +143,18 @@ namespace ImageFilterASP.Controllers
 
 
             // Mark the PipeReader as complete
+            _logger.LogInformation($"content length from post parser: {contentLength}");
             reader.Complete();
-            return pr;
+            return Tuple.Create(pr, contentLength);
         }
 
-        private string ProcessLine(ReadOnlySequence<byte> readOnlySequence, Boolean isImage)
+        private Tuple<string, long> ProcessLine(ReadOnlySequence<byte> readOnlySequence, Boolean isImage)
         {
             var sb = new StringBuilder();
             var processed = 0L;
+            long contentLength = 0;
             var total = readOnlySequence.Length;
-            if (isImage)
+            /*if (isImage)
             {
                 byte[] bytearr = readOnlySequence.ToArray<Byte>();
                 byte[] betterbytearr = new byte[bytearr.Length + 1];
@@ -159,8 +178,9 @@ namespace ImageFilterASP.Controllers
                     decoder.GetChars(span, buffer, isLast);
                     sb.Append(buffer);
                 }
-                return sb.ToString();
-            }
+                return sb.ToString();*/
+            byte[] bytearr = readOnlySequence.ToArray<Byte>();
+            return Tuple.Create(System.Text.Encoding.Default.GetString(bytearr), isImage? readOnlySequence.Length: 0);
         }
     }
 }
