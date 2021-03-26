@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -9,8 +10,10 @@ namespace ImageFilterASP
     public class PostRequest
     {
         private long contentLength;
-        private string contentInfo;
+        private string contentInfo;  
         private Image img;
+        private string imgSrt;
+        private FileStream file;
         private string weirdTextAtTheEnd;
         private readonly ILogger _logger;
 
@@ -18,6 +21,7 @@ namespace ImageFilterASP
         public Image Img { get => img; set => img = value; }
         public string WeirdTextAtTheEnd { get => weirdTextAtTheEnd; set => weirdTextAtTheEnd = value; }
         public long ContentLength { get => contentLength; set => contentLength = value; }
+        public string ImgSrt { get => imgSrt; set => imgSrt = value; }
 
         public PostRequest(ILogger _logger)
         {
@@ -35,7 +39,7 @@ namespace ImageFilterASP
         {
             _logger.LogInformation($"content length: {this.contentLength}");
             _logger.LogInformation($"content info: {this.contentInfo}");
-            //_logger.LogInformation($"image: {this.Img.getData()}");
+            _logger.LogInformation($"image: {this.imgSrt}");
             _logger.LogInformation($"weirdTextAtTheEnd: {this.weirdTextAtTheEnd}");
         }
         

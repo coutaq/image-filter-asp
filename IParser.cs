@@ -8,10 +8,6 @@ namespace ImageFilterASP
 {
     interface IParser
     { 
-        ILogger _logger {set;}
-        void Parse(string data)
-        {
 
-        }
     }
 }

@@ -12,6 +12,7 @@ using System.IO.Pipelines;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Net;
 
 namespace ImageFilterASP.Controllers
 {
@@ -26,30 +27,34 @@ namespace ImageFilterASP.Controllers
 
         public IActionResult Index()
         {
+
             ParseRequestAsync(HttpContext);
             return View();
         }
 
         private async void ParseRequestAsync(HttpContext httpContext)
-        {
+        { 
+            //HttpListenerRequest
             _logger.LogDebug("Logging info from current request");
-            var result = await ReadPipeAsync(httpContext.Request.BodyReader);
+            var result = await ReadPipeAsync(httpContext.Request);
             PostRequest request = result.Item1;
             if (httpContext.Request.ContentLength.HasValue)
             {
                 request.ContentLength = httpContext.Request.ContentLength.Value;
                 _logger.LogInformation($"post: {request.ContentLength}; method: {result.Item2} difference: {request.ContentLength- result.Item2} ");
+                
             }
             else
             {
                 //something probably went wrong
             }
-           
-            request.display();
+
+            //request.display();
             /*for(int i = 0; i < headers.Length; i++)
             {
             _logger.LogInformation($"{i}: {headers[i]}");
             }*/
+           
 
         }
 
@@ -63,124 +68,93 @@ namespace ImageFilterASP.Controllers
         {
             return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
         }
-        long contentLength = 0;
-        const uint CONTENTINFO = 0;
+        /*const uint CONTENTINFO = 0;
         const uint IMAGE = 1;
-        const uint ENDTEXT = 2;
-        async Task<Tuple<PostRequest, long>> ReadPipeAsync(PipeReader reader)
+        const uint ENDTEXT = 2;*/
+        async Task<Tuple<PostRequest, long>> ReadPipeAsync(HttpRequest request)
         {
             PostRequest pr = new PostRequest(_logger);
-            string image = "";
-            uint index = 0;
             long contentLength = 0;
-            while (true)
+            string result;
+            Int32 position = 0;
+            StringBuilder sb = new StringBuilder();
+            if (request.ContentLength.HasValue)
             {
-                ReadResult result = await reader.ReadAsync();
-
-
-                ReadOnlySequence<byte> buffer = result.Buffer;
+               
+                char[] buffer;
+                var lastPos = 0;
+                int index = 0;
+                //File f = new File();
+                var fs = new FileStream("text.png", FileMode.Create);
                 
-                SequencePosition? position = null;
+                PipeReader reader = request.BodyReader;
+                var resBuf = reader.ReadAsync().Result.Buffer;
+                
 
-
-                do
+                _ = await Task.FromResult(Write(fs, trimRequest(resBuf)));
+                bool Write(FileStream fs, byte[] buf)
                 {
-                    // Look for a EOL in the buffer
-                    position = buffer.PositionOf((byte)'\n');
+                    
+                    ReadOnlySpan<byte> bytes = new ReadOnlySpan<byte>(buf);
+                    fs.Write(bytes);
+                    return true;
+                }
+                fs.Close();
+                
 
-
-                    if (position != null)
+                /* using (System.IO.StreamReader reader = new System.IO.StreamReader(request.Body))
+                {
+                    do
                     {
-                        var data = ProcessLine(buffer.Slice(0, position.Value), index == IMAGE);
-                        string currLine = data.Item1;
-                        contentLength += buffer.Slice(0, position.Value).Length;
-                        Console.WriteLine();
-                        if (currLine == null || currLine == "\r")
+                        buffer = new char[512];
+                        /*for(int i = 0; i < buffer.Length; i++)
                         {
-                            
+                            if(buffer[i] == null)
+                            {
+
+                            }
+                        }
+                        position = reader.ReadAsync(buffer, 0, buffer.Length).Result;
+                        fileStream.Write();
+                        _logger.LogInformation($"position: {position}");
+                        if (position != buffer.Length)
+                        {
+                            Array.Resize<char>(ref buffer, position);
+                        }
+              
+                        var data = new string(buffer);
+                        if (data.Contains("/r"))
+                        {
                             index++;
+                            _logger.LogInformation($"new index: {index}");
                         }
-                        else
-                        {
-                            //if (!currLine.StartsWith("------WebKitFormBoundary"))
-                            //{
-                                switch (index)
-                                {
-                                    case CONTENTINFO:
-                                        pr.ContentInfo += currLine;
-                                        break;
-                                    case IMAGE:
-                                        //pr.Img = new Image("null");
-                                        image += currLine;
-                                        break;
-                                    case ENDTEXT:
-                                        pr.WeirdTextAtTheEnd += currLine;
-                                        break;
-                                }
-                            //}
-                        }
-                        
-                        // Process the line
+                        sb.Append(data);
+                        contentLength += position;
+                    } while (position != 0);
+                    //result = reader.ReadToEndAsync().Result;
+                    
+                    _logger.LogInformation(sb.ToString());
 
-
-                        // Skip the line + the \n character (basically position)
-                        buffer = buffer.Slice(buffer.GetPosition(1, position.Value));
-                    }
-                }
-                while (position != null);
-
-
-                // Tell the PipeReader how much of the buffer we have consumed
-                reader.AdvanceTo(buffer.Start, buffer.End);
-
-
-                // Stop reading if there's no more data coming
-                if (result.IsCompleted)
-                {
-                    break;
-                }
+                }*/
             }
+            
+            
 
 
-            // Mark the PipeReader as complete
-            _logger.LogInformation($"content length from post parser: {contentLength}");
-            reader.Complete();
+            _logger.LogInformation($"full requset: {sb.ToString()}");
             return Tuple.Create(pr, contentLength);
         }
-
-        private Tuple<string, long> ProcessLine(ReadOnlySequence<byte> readOnlySequence, Boolean isImage)
+        public byte[] trimRequest(ReadOnlySequence<byte> request)
         {
-            var sb = new StringBuilder();
-            var processed = 0L;
-            long contentLength = 0;
-            var total = readOnlySequence.Length;
-            /*if (isImage)
-            {
-                byte[] bytearr = readOnlySequence.ToArray<Byte>();
-                byte[] betterbytearr = new byte[bytearr.Length + 1];
-                bytearr.CopyTo(betterbytearr, 0);
-                betterbytearr[bytearr.Length] = 10;
-                string base64String = Convert.ToBase64String(betterbytearr, 0, betterbytearr.Length);
-                return base64String.Replace("=", "");
-            }
-            else
-            {
-                Decoder decoder = Encoding.UTF8.GetDecoder();
-
-
-                foreach (var i in readOnlySequence)
-                {
-                    processed += i.Length;
-                    var isLast = processed == total;
-                    var span = i.Span;
-                    var charCount = decoder.GetCharCount(span, isLast);
-                    Span<char> buffer = stackalloc char[charCount];
-                    decoder.GetChars(span, buffer, isLast);
-                    sb.Append(buffer);
-                }
-                return sb.ToString();*/
-            byte[] bytearr = readOnlySequence.ToArray<Byte>();
-            return Tuple.Create(System.Text.Encoding.Default.GetString(bytearr), isImage? readOnlySequence.Length: 0);
+            var startString = "\r\n\r\n";
+            var endString = "\r\n------WebKitFormBoundary";
+            byte[] bytes = request.ToArray();
+            var str = System.Text.Encoding.Default.GetString(bytes);
+            int startPos = str.IndexOf(startString);
+            startPos += startString.Length;
+            int endPos = str.IndexOf(endString);
+            
+            return bytes[startPos..endPos];
         }
     }
 }

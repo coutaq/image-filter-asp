@@ -8,4 +8,15 @@
     <PackageReference Include="Microsoft.AspNet.WebApi.Core" Version="5.2.7" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="wwwroot\php\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Remove="wwwroot\php\upload.php" />
+    <Content Remove="wwwroot\text.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="wwwroot\php\upload.php" />
+    <None Include="wwwroot\text.png" />
+  </ItemGroup>
 </Project>

@@ -6,19 +6,12 @@ using System.Threading.Tasks;
 
 namespace ImageFilterASP
 {
-    public class PostParser : IParser
+    public class PostParser
     {
-        ILogger _logger;
-        PostParser(ILogger logger)
+        PostParser()
         {
-            _logger = logger;
         }
 
-        ILogger IParser._logger { set => throw new NotImplementedException(); }
-
-        void Parse()
-        {
-
-        }
+        
     }
 }

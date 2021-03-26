@@ -1,16 +1,20 @@
 ﻿@{
     ViewData["Title"] = "Home Page";
 }
-
+<div class="container text-center" style="height:300px; width:100%">
+    <img src="text.png" style="width:100%; height:auto;"class="img-responsive rounded mx-auto d-block" id="image"/>
+</div>
 <div class="text-center">
     <h1 class="display-4">Welcome</h1>
-    <form name="form1" method="post" enctype="multipart/form-data" action="">
+    <form name="form1" method="post" enctype="multipart/form-data">
         <div>
-            <label for="image1">Image File</label>
-            <input name="image1" type="file" />
+            <label for="image">Image File</label>
+            <input name="image" type="file" id="filechooser" />
         </div>
         <div>
-            <input type="submit" value="Submit" />
+            <input type="submit" value="Submit" onclick="" />
         </div>
     </form>
 </div>
+<script src="lib/jquery/dist/jquery.js" type="text/javascript"></script>
+<script src="js/site.js" type="text/javascript"></script>
