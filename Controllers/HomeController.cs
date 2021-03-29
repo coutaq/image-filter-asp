@@ -37,39 +37,9 @@ namespace ImageFilterASP.Controllers
             //HttpListenerRequest
             _logger.LogDebug("Logging info from current request");
             var req = httpContext.Request;
-            
-            if (httpContext.Request.ContentLength.HasValue)
-            {
-                _logger.LogInformation($"content lenghth: {httpContext.Request.ContentLength.Value}");
-                //_logger.LogInformation($"post: {request.ContentLength}; method: {result.Item2} difference: {request.ContentLength- result.Item2} ");
-                
-            }
-            else
-            {
-                //something probably went wrong
-            }
-           // try
-            //{
-
-                var result = await ReadPipeAsync(req);
-                PostRequest request = result.Item1;
-                
-            //}
-            //catch
-            //{
-                _logger.LogInformation("ERROR");
-            //}
-            
-
-            
-
-            //request.display();
-            /*for(int i = 0; i < headers.Length; i++)
-            {
-            _logger.LogInformation($"{i}: {headers[i]}");
-            }*/
-
-
+            _logger.LogInformation($"content lenghth: {httpContext.Request.ContentLength.GetValueOrDefault()}");
+            var result = await ReadPipeAsync(req);
+            PostRequest request = result.Item1;
         }
 
         public IActionResult Privacy()
@@ -105,11 +75,15 @@ namespace ImageFilterASP.Controllers
                 sw.AutoFlush = true;
                 Console.SetOut(sw);
                 PipeReader reader = request.BodyReader;
-                PostStream ps = new PostStream();
+                var str = new MemoryStream();
+                PostStream ps = new PostStream(str, fs, _logger);
+                ps.Seek(0, 0);
                 var resBuf = reader.AsStream();
                 //resBuf.CopyTo(fs);
                 resBuf.CopyTo(ps);
-                
+                _logger.LogInformation("completed writing");
+                //ps.CopyTo(fs);
+
 
                 //_ = await Task.FromResult(Write(fs, trimRequest(resBuf)));
                 //

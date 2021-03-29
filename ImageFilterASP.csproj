@@ -6,6 +6,8 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNet.WebApi.Core" Version="5.2.7" />
+    <PackageReference Include="SliceModule" Version="1.0.0" />
+    <PackageReference Include="System.Buffers.Primitives" Version="0.1.0-alpha-001" />
   </ItemGroup>
 
   <ItemGroup>
