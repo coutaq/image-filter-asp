@@ -36,25 +36,39 @@ namespace ImageFilterASP.Controllers
         { 
             //HttpListenerRequest
             _logger.LogDebug("Logging info from current request");
-            var result = await ReadPipeAsync(httpContext.Request);
-            PostRequest request = result.Item1;
+            var req = httpContext.Request;
+            
             if (httpContext.Request.ContentLength.HasValue)
             {
-                request.ContentLength = httpContext.Request.ContentLength.Value;
-                _logger.LogInformation($"post: {request.ContentLength}; method: {result.Item2} difference: {request.ContentLength- result.Item2} ");
+                _logger.LogInformation($"content lenghth: {httpContext.Request.ContentLength.Value}");
+                //_logger.LogInformation($"post: {request.ContentLength}; method: {result.Item2} difference: {request.ContentLength- result.Item2} ");
                 
             }
             else
             {
                 //something probably went wrong
             }
+           // try
+            //{
+
+                var result = await ReadPipeAsync(req);
+                PostRequest request = result.Item1;
+                
+            //}
+            //catch
+            //{
+                _logger.LogInformation("ERROR");
+            //}
+            
+
+            
 
             //request.display();
             /*for(int i = 0; i < headers.Length; i++)
             {
             _logger.LogInformation($"{i}: {headers[i]}");
             }*/
-           
+
 
         }
 
@@ -73,6 +87,7 @@ namespace ImageFilterASP.Controllers
         const uint ENDTEXT = 2;*/
         async Task<Tuple<PostRequest, long>> ReadPipeAsync(HttpRequest request)
         {
+            _logger.LogInformation("Accepting request 123");
             PostRequest pr = new PostRequest(_logger);
             long contentLength = 0;
             string result;
@@ -86,56 +101,25 @@ namespace ImageFilterASP.Controllers
                 int index = 0;
                 //File f = new File();
                 var fs = new FileStream("text.png", FileMode.Create);
-                
+                var sw = new StreamWriter(Console.OpenStandardOutput());
+                sw.AutoFlush = true;
+                Console.SetOut(sw);
                 PipeReader reader = request.BodyReader;
-                var resBuf = reader.ReadAsync().Result.Buffer;
+                PostStream ps = new PostStream();
+                var resBuf = reader.AsStream();
+                //resBuf.CopyTo(fs);
+                resBuf.CopyTo(ps);
                 
 
-                _ = await Task.FromResult(Write(fs, trimRequest(resBuf)));
+                //_ = await Task.FromResult(Write(fs, trimRequest(resBuf)));
+                //
                 bool Write(FileStream fs, byte[] buf)
-                {
-                    
-                    ReadOnlySpan<byte> bytes = new ReadOnlySpan<byte>(buf);
-                    fs.Write(bytes);
+                { 
+                    //ReadOnlySpan<byte> bytes = new ReadOnlySpan<byte>(buf);
+                    //fs.Write(bytes);
                     return true;
                 }
                 fs.Close();
-                
-
-                /* using (System.IO.StreamReader reader = new System.IO.StreamReader(request.Body))
-                {
-                    do
-                    {
-                        buffer = new char[512];
-                        /*for(int i = 0; i < buffer.Length; i++)
-                        {
-                            if(buffer[i] == null)
-                            {
-
-                            }
-                        }
-                        position = reader.ReadAsync(buffer, 0, buffer.Length).Result;
-                        fileStream.Write();
-                        _logger.LogInformation($"position: {position}");
-                        if (position != buffer.Length)
-                        {
-                            Array.Resize<char>(ref buffer, position);
-                        }
-              
-                        var data = new string(buffer);
-                        if (data.Contains("/r"))
-                        {
-                            index++;
-                            _logger.LogInformation($"new index: {index}");
-                        }
-                        sb.Append(data);
-                        contentLength += position;
-                    } while (position != 0);
-                    //result = reader.ReadToEndAsync().Result;
-                    
-                    _logger.LogInformation(sb.ToString());
-
-                }*/
             }
             
             
@@ -146,11 +130,32 @@ namespace ImageFilterASP.Controllers
         }
         public byte[] trimRequest(ReadOnlySequence<byte> request)
         {
+
+
             var startString = "\r\n\r\n";
-            var endString = "\r\n------WebKitFormBoundary";
-            byte[] bytes = request.ToArray();
-            var str = System.Text.Encoding.Default.GetString(bytes);
+            var endString = "\r\n-------";
+            byte[] bytes = new byte[99999999];
+            //bytes = request.ToArray();
+
+            var decoder = Encoding.UTF8.GetDecoder();
+            var sb = new StringBuilder();
+            var processed = 0L;
+            var total = request.Length;
+            foreach (var i in request)
+            {
+                processed += i.Length;
+                var isLast = processed == total;
+                var span = i.Span;
+                var charCount = decoder.GetCharCount(span, isLast);
+                Span<char> buffer = stackalloc char[charCount];
+                decoder.GetChars(span, buffer, isLast);
+                sb.Append(buffer);
+            }
+
+            //var str = System.Text.Encoding.Default.GetString(bytes);
+            var str = sb.ToString();
             int startPos = str.IndexOf(startString);
+             _logger.LogInformation(str+"//1end-of-file");
             startPos += startString.Length;
             int endPos = str.IndexOf(endString);
             
