@@ -6,7 +6,7 @@ using SliceClass;
 
 namespace ImageFilterASP
 {
-    class PostStream : Stream
+    class BMPStream : Stream, IModifiable
     {
         Stream inner;
         FileStream fs;
@@ -15,10 +15,15 @@ namespace ImageFilterASP
         int position = 0;
         string text = "";
         byte[] backup = { };
+
+        const int OFFSET = 10;
+        const int OFFSET_LENGTH = 4;
+        int imageStart;
+
         private readonly ILogger<HomeController> _logger;
 
 
-        public PostStream(Stream inner, FileStream fs, ILogger<HomeController> logger)
+        public BMPStream(Stream inner, FileStream fs, ILogger<HomeController> logger)
         {
             _logger = logger;
             this.fs = fs;
@@ -56,9 +61,9 @@ namespace ImageFilterASP
             inner.SetLength(value);
         }
 
-        byte[] startBytes = new byte[] {0x0d, 0x0a, 0x0d, 0x0a};
-        byte[] endBytes = new byte[] {0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d };
-        byte[] imgBytes = new byte[] { 0x49, 0x44, 0x41, 0x54};
+        byte[] startBytes = new byte[] { 0x0d, 0x0a, 0x0d, 0x0a };
+        byte[] endBytes = new byte[] { 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d };
+        byte[] imgBytes = new byte[] { 0x49, 0x44, 0x41, 0x54 };
         byte[] imgEnd = new byte[] { 0x49, 0x45, 0x4E, 0x44 };
         public override void Write(byte[] buffer, int offset, int count)
         {
@@ -68,7 +73,7 @@ namespace ImageFilterASP
             int foundStarts = 0;
             int imgData = 0;
             iter++;
-            
+
             byte[] compBytes = new byte[4];
             if (iter == 1)
             {
@@ -79,43 +84,43 @@ namespace ImageFilterASP
                     {
                         startPos = i + 4;
                         foundStarts++;
-                        if (foundStarts>1)
+                        if (foundStarts > 1)
                         {
                             byte[] textBytes = new byte[startPos];
                             textBytes = buffer.Slice(0, startPos);
                             text = System.Text.Encoding.Default.GetString(textBytes);
-                            var filterStart = text.IndexOf("filterName")+1+ "filterName".Length;
+                            var filterStart = text.IndexOf("filterName") + 1 + "filterName".Length;
                             var filterEnd = text.LastIndexOf("------WebKitFormBoundary");
 
-                            text = text.Substring(filterStart, filterEnd-filterStart).Trim();
+                            text = text.Substring(filterStart, filterEnd - filterStart).Trim();
                             _logger.LogInformation($"current filter: {text}");
                             break;
-                        }                
+                        }
                     }
                 }
-            }         
+            }
             compBytes = new byte[6];
 
             for (int i = offset + count; i > offset + 6; i--)
             {
-            Array.Copy(buffer, i, compBytes, 0, 6);
-            if (CompareByteArray(compBytes, endBytes, 6))
-            {
-            endPos = count-i;
-                if (foundBoundaries != 4)
+                Array.Copy(buffer, i, compBytes, 0, 6);
+                if (CompareByteArray(compBytes, endBytes, 6))
                 {
-                    foundBoundaries++;
+                    endPos = count - i;
+                    if (foundBoundaries != 4)
+                    {
+                        foundBoundaries++;
+                    }
+                    else
+                    {
+                        break;
+                    }
+
                 }
-                else
-                {
-                    break;
-                }
-                       
-            }
             }
             if (endPos == 0) endPos = count;
-            byte[] data = buffer.Slice(offset+startPos, count);
-            for(int i = 0; i<data.Length; i++)
+            byte[] data = buffer.Slice(offset + startPos, count);
+            for (int i = 0; i < data.Length; i++)
             {
                 //data[i] = (byte)(data[i]+data[i]);
                 _logger.LogInformation($"byte at {i} is {data[i]}");
@@ -138,5 +143,5 @@ namespace ImageFilterASP
             return true;
         }
     }
-    
+
 }

@@ -39,7 +39,16 @@ namespace ImageFilterASP.Controllers
             var req = httpContext.Request;
             _logger.LogInformation($"content lenghth: {httpContext.Request.ContentLength.GetValueOrDefault()}");
             var result = await ReadPipeAsync(req);
-            PostRequest request = result.Item1;
+            //PostRequest request = result.Item1;
+            var resp = httpContext.Response.Body;
+            var ps = result.Item1;
+           
+            byte[] bt = {0x13, 0x19 };
+            FileStream fs = new FileStream("wakeupcat.jpg", FileMode.Open);
+            byte[] bytes = new byte[fs.Length];
+            fs.Read(bytes);
+            //httpContext.Response.Headers.Add("Content-Type", "image/jpeg");
+            //resp.Write(bytes);
         }
 
         public IActionResult Privacy()
@@ -55,7 +64,7 @@ namespace ImageFilterASP.Controllers
         /*const uint CONTENTINFO = 0;
         const uint IMAGE = 1;
         const uint ENDTEXT = 2;*/
-        async Task<Tuple<PostRequest, long>> ReadPipeAsync(HttpRequest request)
+        async Task<Tuple<PostStream, long>> ReadPipeAsync(HttpRequest request)
         {
             _logger.LogInformation("Accepting request 123");
             PostRequest pr = new PostRequest(_logger);
@@ -63,6 +72,9 @@ namespace ImageFilterASP.Controllers
             string result;
             Int32 position = 0;
             StringBuilder sb = new StringBuilder();
+            var str = new MemoryStream();
+            var fs = new FileStream("text.png", FileMode.Create);
+            PostStream ps = new PostStream(str, fs, _logger);
             if (request.ContentLength.HasValue)
             {
                
@@ -70,13 +82,13 @@ namespace ImageFilterASP.Controllers
                 var lastPos = 0;
                 int index = 0;
                 //File f = new File();
-                var fs = new FileStream("text.png", FileMode.Create);
+               
                 var sw = new StreamWriter(Console.OpenStandardOutput());
                 sw.AutoFlush = true;
                 Console.SetOut(sw);
                 PipeReader reader = request.BodyReader;
-                var str = new MemoryStream();
-                PostStream ps = new PostStream(str, fs, _logger);
+                
+                
                 ps.Seek(0, 0);
                 var resBuf = reader.AsStream();
                 //resBuf.CopyTo(fs);
@@ -100,7 +112,7 @@ namespace ImageFilterASP.Controllers
 
 
             _logger.LogInformation($"full requset: {sb.ToString()}");
-            return Tuple.Create(pr, contentLength);
+            return Tuple.Create(ps, contentLength);
         }
         public byte[] trimRequest(ReadOnlySequence<byte> request)
         {
